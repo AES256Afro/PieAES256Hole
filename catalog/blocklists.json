@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-07-19",
+  "maintainer": {
+    "name": "HaGeZi DNS Blocklists",
+    "homepage": "https://github.com/hagezi/dns-blocklists",
+    "license": "GPL-3.0",
+    "format": "Adblock",
+    "updatePolicy": "Maintainer-managed latest release through jsDelivr"
+  },
+  "lists": [
+    {
+      "id": "hagezi-normal",
+      "name": "HaGeZi Multi Normal",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/multi.txt",
+      "purpose": "Ads, tracking, telemetry and common threats with relaxed compatibility",
+      "risk": "low"
+    },
+    {
+      "id": "hagezi-pro",
+      "name": "HaGeZi Multi Pro",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt",
+      "purpose": "Balanced privacy, telemetry, phishing, malware, scam and cryptojacking protection",
+      "risk": "low"
+    },
+    {
+      "id": "hagezi-pro-plus",
+      "name": "HaGeZi Multi Pro++",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.plus.txt",
+      "purpose": "Aggressive tracking and telemetry protection with some false-positive risk",
+      "risk": "medium"
+    },
+    {
+      "id": "hagezi-tif-medium",
+      "name": "HaGeZi Threat Intelligence Feed — Medium",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/tif.medium.txt",
+      "purpose": "Malware, phishing, scam, spam, cryptojacking and command-and-control domains",
+      "risk": "low"
+    },
+    {
+      "id": "hagezi-native-apple",
+      "name": "HaGeZi Apple Native Trackers",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.apple.txt",
+      "purpose": "Apple platform telemetry and native activity tracking",
+      "risk": "medium"
+    },
+    {
+      "id": "hagezi-native-windows",
+      "name": "HaGeZi Windows and Office Native Trackers",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.winoffice.txt",
+      "purpose": "Windows, Office and MSN telemetry and native activity tracking",
+      "risk": "medium"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "balanced",
+      "title": "Balanced",
+      "coverage": "Everyday privacy",
+      "description": "HaGeZi Pro for strong protection with very few site restrictions.",
+      "listIds": ["hagezi-pro"]
+    },
+    {
+      "id": "heavy",
+      "title": "Heavy",
+      "coverage": "Recommended for this network",
+      "description": "HaGeZi Pro plus the medium threat feed for strong malware and scam protection without deliberately breaking popular services.",
+      "listIds": ["hagezi-pro", "hagezi-tif-medium"]
+    },
+    {
+      "id": "maximum",
+      "title": "Maximum",
+      "coverage": "Experienced administrators",
+      "description": "Pro++ plus the medium threat feed. Blocks more telemetry and referral tracking, with a greater chance of false positives.",
+      "listIds": ["hagezi-pro-plus", "hagezi-tif-medium"]
+    }
+  ],
+  "compatibilityChecks": [
+    { "id": "reddit", "name": "Reddit", "url": "https://www.reddit.com/robots.txt" },
+    { "id": "stremio", "name": "Stremio", "url": "https://www.stremio.com/" },
+    { "id": "steam", "name": "Steam", "url": "https://store.steampowered.com/" },
+    { "id": "facebook", "name": "Facebook", "url": "https://www.facebook.com/" }
+  ]
+}
