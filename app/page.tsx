@@ -91,16 +91,24 @@ export default function Home() {
     window.setTimeout(() => setCopied(false), 1600);
   };
 
+  const proxyPiHoleFetch = async (baseUrl: string, path: string, init: RequestInit = {}, sid = "") => {
+    const body = typeof init.body === "string" ? init.body : undefined;
+    return fetch("/api/pihole", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ baseUrl, path, method: init.method || "GET", sid, body }),
+      signal: init.signal,
+      cache: "no-store",
+    });
+  };
+
   const piHoleFetch = async (path: string, init: RequestInit = {}) => {
     if (!piHoleSession) throw new Error("Connect to Pi-hole first.");
-    const headers = new Headers(init.headers);
-    if (piHoleSession.sid) headers.set("X-FTL-SID", piHoleSession.sid);
-    return fetch(`${piHoleSession.baseUrl}/api${path}`, { ...init, headers, cache: "no-store" });
+    return proxyPiHoleFetch(piHoleSession.baseUrl, path, init, piHoleSession.sid);
   };
 
   const verifyVersion = async (baseUrl: string, sid = "") => {
-    const headers = sid ? { "X-FTL-SID": sid } : undefined;
-    const response = await fetch(`${baseUrl}/api/info/version`, { headers, cache: "no-store" });
+    const response = await proxyPiHoleFetch(baseUrl, "/info/version", {}, sid);
     if (!response.ok) throw new Error("Pi-hole accepted the login but its version endpoint did not respond.");
     return versionLabel(await response.json());
   };
@@ -128,8 +136,8 @@ export default function Home() {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 4500);
     try {
-      const authResponse = await fetch(`${baseUrl}/api/auth`, { signal: controller.signal, cache: "no-store" });
-      const authPayload = await authResponse.json().catch(() => null) as { session?: { valid?: boolean; sid?: string | null } } | null;
+      const authResponse = await proxyPiHoleFetch(baseUrl, "/auth", { signal: controller.signal });
+      const authPayload = await authResponse.json().catch(() => null) as { session?: { valid?: boolean; sid?: string | null }; error?: string } | null;
       if (authResponse.ok && authPayload?.session?.valid) {
         const sid = authPayload.session.sid || "";
         const version = await verifyVersion(baseUrl, sid);
@@ -140,11 +148,11 @@ export default function Home() {
         setPiHoleSession({ baseUrl, sid: "", version: "" });
         setServerCheck("auth-required");
       } else {
-        throw new Error("The address responded, but it did not identify itself as Pi-hole v6.");
+        throw new Error(authPayload?.error || "The address responded, but it did not identify itself as Pi-hole v6.");
       }
-    } catch {
+    } catch (error) {
       setServerCheck("failed");
-      setServerError("Could not reach the Pi-hole v6 API. Confirm Tailscale is connected and the address is correct.");
+      setServerError(error instanceof Error ? error.message : "Could not reach the Pi-hole v6 API. Confirm Tailscale is connected and the address is correct.");
     } finally {
       window.clearTimeout(timer);
     }
@@ -155,11 +163,9 @@ export default function Home() {
     setServerCheck("checking");
     setServerError("");
     try {
-      const response = await fetch(`${piHoleSession.baseUrl}/api/auth`, {
+      const response = await proxyPiHoleFetch(piHoleSession.baseUrl, "/auth", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: adminPassword }),
-        cache: "no-store",
       });
       const payload = await response.json() as { session?: { valid?: boolean; sid?: string | null }; error?: { message?: string } };
       if (!response.ok || !payload.session?.valid || !payload.session.sid) throw new Error(payload.error?.message || "Pi-hole rejected that password.");

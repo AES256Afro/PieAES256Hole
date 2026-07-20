@@ -11,7 +11,7 @@ The current milestone combines automated bootstrap scripts with a browser consol
 - Balanced, Heavy, and Maximum protection profiles backed by a reviewed HaGeZi catalog.
 - Shelf-device discovery form and safety messaging.
 - Direct Pi-hole v6 API and version verification.
-- In-memory Pi-hole authentication; the administrator password is never persisted by the console.
+- In-memory Pi-hole authentication through a private-console-only local proxy; the administrator password is never persisted.
 - Idempotent list application, gravity rebuild, and scoped rollback.
 - Reddit, Stremio, Steam, and Facebook reachability checks after a profile change.
 - Real prerequisite bootstrap scripts for macOS, Debian-family Linux appliances, and Windows.
@@ -50,7 +50,7 @@ The scripts detect existing requirements before installing anything. They use of
 
 The production shelf appliance path uses Linux, Docker Engine, and Compose. macOS and Windows can run a local test appliance through Docker Desktop, but Docker Desktop startup still depends on the desktop operating system's login/startup behavior. A controller-only installation may skip Docker and Pi-hole with `--skip-docker` on macOS or `-SkipDocker` on Windows.
 
-The web console uses Pi-hole's supported HTTP API for filtering changes. It still cannot inspect Docker, systemd, firewall state, or reboot persistence; those host-level checks remain the responsibility of the planned appliance controller. Run the console over a trusted local or Tailscale path. A public HTTPS deployment cannot manage an HTTP-only private Pi-hole because browsers block mixed content.
+The web console uses a same-origin proxy to call Pi-hole's supported HTTP API without weakening Pi-hole's CORS policy. The proxy accepts only a fixed set of typed Pi-hole operations, private LAN or Tailscale targets, and consoles hosted on localhost, private addresses, `.local`, or `.ts.net`. The public Sites deployment refuses management requests. The console still cannot inspect Docker, systemd, firewall state, or reboot persistence; those host-level checks remain the responsibility of the planned appliance controller.
 
 Validation:
 

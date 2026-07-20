@@ -23,7 +23,9 @@ The browser console is the shared GUI. Small native setup assistants may later h
 
 Platform bootstrap scripts perform requirement detection and installation before the setup state machine begins. They authenticate Tailscale, install Docker when missing, generate a protected Pi-hole administrator password, write an idempotent Compose deployment with persistent configuration, pull the pinned official Pi-hole image, start it with `restart: unless-stopped`, and verify the admin endpoint. The Linux appliance path enables host services at boot and emits `/var/lib/pieaes256hole/bootstrap-status.json`; desktop test appliances use a per-user application-data directory.
 
-The browser console verifies Pi-hole v6 through `/api/auth` and `/api/info/version`. It holds the short-lived Pi-hole session ID in memory, uses `/api/lists` for blocklist changes, and invokes `/api/action/gravity` after a change. It records which URLs it added and uses `/api/lists:batchDelete` for a scoped rollback; pre-existing lists are preserved. The administrator password is cleared after authentication and is never persisted by this console.
+The browser console verifies Pi-hole v6 through `/api/auth` and `/api/info/version`. Because Pi-hole intentionally does not grant cross-origin browser access, the console uses a same-origin local proxy. The proxy is disabled on public hostnames, accepts only private LAN and Tailscale targets, and exposes a fixed allowlist of typed Pi-hole API operations. It never accepts an arbitrary URL or shell command.
+
+The console holds the short-lived Pi-hole session ID in memory, uses `/api/lists` for blocklist changes, and invokes `/api/action/gravity` after a change. It records which URLs it added and uses `/api/lists:batchDelete` for a scoped rollback; pre-existing lists are preserved. The administrator password passes through the private console process only during authentication, is cleared from browser state afterward, and is never persisted.
 
 The browser still cannot read the appliance filesystem or invoke privileged host commands. A future local control service will verify the signed bootstrap status and expose typed Docker, systemd, Tailscale, firewall, DNS, and reboot health endpoints. Browser reachability checks are clearly labeled and never substitute for host inspection.
 
@@ -32,7 +34,7 @@ The console must never synthesize a LAN hostname or admin URL. An appliance addr
 ## Trust boundaries
 
 - The browser never executes shell commands.
-- Pi-hole credentials travel directly from the browser to the user-selected Pi-hole address and are not sent to the hosted console.
+- Pi-hole credentials pass only through the private console's same-origin proxy and are never accepted by the public hosted console.
 - The control service never runs as root.
 - The privileged helper accepts typed operations, not arbitrary commands.
 - Provider secrets and tunnel private keys are encrypted at rest.

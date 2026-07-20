@@ -39,22 +39,33 @@ test("the handoff never invents an appliance hostname", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(page, /useState\(["']pieaes256hole\.local["']\)/);
   assert.match(page, /serverCheck !== "passed"/);
-  assert.match(page, /fetch\(`\$\{baseUrl\}\/api\/auth`/);
-  assert.match(page, /fetch\(`\$\{baseUrl\}\/api\/info\/version`/);
+  assert.match(page, /proxyPiHoleFetch\(baseUrl, "\/auth"/);
+  assert.match(page, /proxyPiHoleFetch\(baseUrl, "\/info\/version"/);
   assert.match(page, /href=\{verifiedAdminUrl\}/);
 });
 
 test("protection catalog uses reviewed HTTPS lists and safe rollback", async () => {
   const catalog = JSON.parse(await readFile(new URL("../catalog/blocklists.json", import.meta.url), "utf8"));
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const route = await readFile(new URL("../app/api/pihole/route.ts", import.meta.url), "utf8");
 
   assert.equal(catalog.schemaVersion, 1);
   assert.equal(catalog.maintainer.license, "GPL-3.0");
   assert.ok(catalog.lists.length >= 6);
   assert.ok(catalog.lists.every((list) => list.url.startsWith("https://")));
   assert.deepEqual(catalog.profiles.find((profile) => profile.id === "heavy").listIds, ["hagezi-pro", "hagezi-tif-medium"]);
-  assert.match(page, /X-FTL-SID/);
+  assert.match(route, /X-FTL-SID/);
   assert.match(page, /\/lists:batchDelete/);
   assert.match(page, /\/action\/gravity/);
   assert.doesNotMatch(page, /setTimeout\(\(\) => \{\s*setTesting/);
+});
+
+test("the Pi-hole proxy is restricted to private consoles and typed operations", async () => {
+  const route = await readFile(new URL("../app/api/pihole/route.ts", import.meta.url), "utf8");
+  assert.match(route, /isPrivateHost\(consoleUrl\.hostname\)/);
+  assert.match(route, /isPrivateHost\(baseUrl\.hostname\)/);
+  assert.match(route, /allowedOperations/);
+  assert.match(route, /GET \/auth/);
+  assert.match(route, /POST \/lists:batchDelete/);
+  assert.doesNotMatch(route, /Access-Control-Allow-Origin/);
 });
