@@ -8,6 +8,7 @@ type Protection = "balanced" | "heavy" | "maximum";
 type ServerCheck = "idle" | "checking" | "auth-required" | "passed" | "failed";
 type ApplyState = "idle" | "applying" | "passed" | "failed" | "rolling-back";
 type CompatibilityState = "idle" | "checking" | "passed" | "failed";
+type DomainCheckState = "idle" | "checking" | "found" | "clear" | "failed" | "allowing" | "allowed" | "undoing";
 
 type PiHoleSession = {
   baseUrl: string;
@@ -17,6 +18,14 @@ type PiHoleSession = {
 
 type CatalogList = (typeof catalog.lists)[number];
 type CatalogProfile = (typeof catalog.profiles)[number];
+type DomainMatch = {
+  domain: string;
+  type: "allow" | "deny" | "block";
+  kind?: "exact" | "regex";
+  address?: string;
+  comment?: string | null;
+  enabled?: boolean;
+};
 
 const steps = [
   { label: "Requirements", detail: "Check and install what is missing" },
@@ -51,6 +60,14 @@ function versionLabel(payload: unknown) {
   return version.version?.core?.local?.version || version.version?.ftl?.local?.version || "Pi-hole v6";
 }
 
+function normalizeDomain(entered: string) {
+  const value = entered.trim().toLowerCase().replace(/^https?:\/\//, "").split(/[\/?#]/, 1)[0].replace(/\.$/, "");
+  if (value.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value)) {
+    throw new Error("Enter one full domain, such as ads.example.com.");
+  }
+  return value;
+}
+
 export default function Home() {
   const [activeStep, setActiveStep] = useState(0);
   const [platform, setPlatform] = useState<Platform>("macos");
@@ -72,6 +89,11 @@ export default function Home() {
   const [lastAddedUrls, setLastAddedUrls] = useState<string[]>([]);
   const [compatibility, setCompatibility] = useState<Record<string, CompatibilityState>>(() => Object.fromEntries(catalog.compatibilityChecks.map((check) => [check.id, "idle"])));
   const [finished, setFinished] = useState(false);
+  const [domainInput, setDomainInput] = useState("");
+  const [checkedDomain, setCheckedDomain] = useState("");
+  const [domainCheckState, setDomainCheckState] = useState<DomainCheckState>("idle");
+  const [domainMatches, setDomainMatches] = useState<DomainMatch[]>([]);
+  const [domainMessage, setDomainMessage] = useState("");
 
   const percent = useMemo(() => finished ? 100 : Math.round(((activeStep + 1) / steps.length) * 100), [activeStep, finished]);
 
@@ -271,6 +293,63 @@ export default function Home() {
     setActiveStep((step) => Math.min(step + 1, steps.length - 1));
   };
 
+  const inspectDomain = async () => {
+    setDomainCheckState("checking");
+    setDomainMessage("");
+    setDomainMatches([]);
+    try {
+      const domain = normalizeDomain(domainInput);
+      const response = await piHoleFetch(`/search/${encodeURIComponent(domain)}?partial=false&N=20`);
+      const payload = await response.json() as { search?: { domains?: DomainMatch[]; gravity?: DomainMatch[] }; error?: { message?: string } };
+      if (!response.ok) throw new Error(payload.error?.message || "Pi-hole could not search its lists.");
+      const matches = [...(payload.search?.domains || []), ...(payload.search?.gravity || [])].filter((match) => match.enabled !== false);
+      const allowed = matches.some((match) => match.type === "allow" && match.kind === "exact" && match.domain === domain);
+      const blocked = matches.some((match) => match.type === "deny" || match.type === "block");
+      setCheckedDomain(domain);
+      setDomainMatches(matches);
+      setDomainCheckState(matches.length ? "found" : "clear");
+      setDomainMessage(allowed ? "This exact domain is already allowed, so it overrides subscribed blocklists." : blocked ? "Pi-hole found a blocking match. Review the source below before allowing it." : "No active exact, regex, or subscribed-list match was found.");
+    } catch (error) {
+      setDomainCheckState("failed");
+      setDomainMessage(error instanceof Error ? error.message : "Domain inspection failed.");
+    }
+  };
+
+  const allowCheckedDomain = async () => {
+    if (!checkedDomain) return;
+    setDomainCheckState("allowing");
+    setDomainMessage("Adding one exact-domain exception…");
+    try {
+      const response = await piHoleFetch("/domains/allow/exact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: checkedDomain, comment: "Pie AES256 Hole exact exception", groups: [0], enabled: true }),
+      });
+      const payload = await response.json().catch(() => null) as { error?: { message?: string; hint?: string } } | null;
+      if (!response.ok) throw new Error(payload?.error?.message || "Pi-hole could not add the exact-domain exception.");
+      setDomainCheckState("allowed");
+      setDomainMessage(`${checkedDomain} is now allowed exactly. Parent domains and unrelated services remain protected.`);
+    } catch (error) {
+      setDomainCheckState("failed");
+      setDomainMessage(error instanceof Error ? error.message : "The exception could not be added.");
+    }
+  };
+
+  const undoDomainAllow = async () => {
+    if (!checkedDomain) return;
+    setDomainCheckState("undoing");
+    try {
+      const response = await piHoleFetch(`/domains/allow/exact/${encodeURIComponent(checkedDomain)}`, { method: "DELETE" });
+      if (!response.ok && response.status !== 404) throw new Error("Pi-hole could not remove the exception.");
+      setDomainCheckState("found");
+      setDomainMessage(`The exact exception for ${checkedDomain} was removed.`);
+      setDomainMatches((matches) => matches.filter((match) => !(match.type === "allow" && match.kind === "exact" && match.domain === checkedDomain)));
+    } catch (error) {
+      setDomainCheckState("failed");
+      setDomainMessage(error instanceof Error ? error.message : "Undo failed.");
+    }
+  };
+
   const compatibilityComplete = Object.values(compatibility).every((state) => state === "passed" || state === "failed");
   const continueDisabled = (activeStep === 0 && !bootstrapConfirmed) || (activeStep === 1 && !tailscaleConfirmed) || (activeStep === 2 && serverCheck !== "passed") || (activeStep === 3 && applyState !== "passed") || (activeStep === 4 && !compatibilityComplete);
 
@@ -287,6 +366,20 @@ export default function Home() {
             <a href="https://login.tailscale.com/admin/machines" target="_blank" rel="noreferrer"><span>Tailscale</span><strong>Machines & private addresses</strong><small>Open Tailscale admin →</small></a>
           </div>
           <div className="success-banner"><strong>{profiles[protection].title} protection is active.</strong> Passwords stayed in browser memory only, and the Pi-hole session can expire normally. Use Query Log when a specific app stops working.</div>
+          <section className="domain-doctor" aria-labelledby="domain-doctor-title">
+            <p className="eyebrow">WHY WAS THIS BLOCKED?</p>
+            <h2 id="domain-doctor-title">Inspect before you allow.</h2>
+            <p>Paste the exact hostname from Pi-hole Query Log. The console shows whether a manual rule or subscribed list matched it.</p>
+            <div className="domain-doctor-row">
+              <input aria-label="Domain to inspect" placeholder="ads.example.com" value={domainInput} onChange={(event) => { setDomainInput(event.target.value); setDomainCheckState("idle"); }} onKeyDown={(event) => { if (event.key === "Enter") void inspectDomain(); }} />
+              <button className="secondary-button" onClick={inspectDomain} disabled={domainCheckState === "checking"}>{domainCheckState === "checking" ? "Checking…" : "Inspect domain"}</button>
+            </div>
+            {domainCheckState !== "idle" && <div className={`domain-result ${domainCheckState}`}><strong>{domainMessage}</strong>{domainMatches.length > 0 && <ul>{domainMatches.map((match, index) => <li key={`${match.type}-${match.kind || "list"}-${match.address || match.domain}-${index}`}><span>{match.type === "block" ? "Subscribed blocklist" : `${match.type} · ${match.kind}`}</span><code>{match.address || match.domain}</code>{match.comment && <small>{match.comment}</small>}</li>)}</ul>}</div>}
+            {checkedDomain && domainCheckState !== "idle" && <div className="domain-actions">
+              {domainCheckState === "allowed" ? <button className="back-button rollback-button" onClick={undoDomainAllow} disabled={domainCheckState === "undoing"}>Undo exact allow</button> : <button className="primary-button" onClick={allowCheckedDomain} disabled={domainCheckState === "checking" || domainCheckState === "allowing" || domainCheckState === "undoing" || domainMatches.some((match) => match.type === "allow" && match.kind === "exact" && match.domain === checkedDomain)}>{domainCheckState === "allowing" ? "Allowing…" : "Allow this exact domain"}</button>}
+              <a href={`${piHoleSession?.baseUrl || ""}/admin/queries`} target="_blank" rel="noreferrer">Open Query Log</a>
+            </div>}
+          </section>
           <button className="primary-button finish-button" onClick={() => { setFinished(false); setActiveStep(0); }}>Review setup</button>
         </section>
       </main>

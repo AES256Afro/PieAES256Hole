@@ -204,6 +204,23 @@ h1 em { color: var(--orange); font-weight: 400; }
 .access-links strong { margin-top: 12px; font: 700 18px/1.3 Georgia, serif; overflow-wrap: anywhere; }
 .access-links small { margin-top: auto; color: var(--forest); font-weight: 800; }
 .finish-button { display: block; margin: 24px 0 0 auto; }
+.domain-doctor { margin-top: 22px; padding: 23px; border: 1px solid #cdd8ce; border-radius: 16px; background: var(--paper); }
+.domain-doctor .eyebrow { margin-bottom: 8px; }
+.domain-doctor h2 { margin: 0; font: 700 24px/1.2 Georgia, serif; }
+.domain-doctor > p:not(.eyebrow) { margin: 8px 0 16px; color: #687970; font-size: 11px; line-height: 1.5; }
+.domain-doctor-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.domain-doctor-row input { min-width: 0; height: 44px; border: 1px solid #becbc1; border-radius: 10px; padding: 0 13px; color: var(--ink); background: white; }
+.domain-result { margin-top: 13px; padding: 14px; border-radius: 10px; background: #f0f3ed; font-size: 10px; line-height: 1.45; }
+.domain-result.failed { background: #fbefeb; color: #8d3427; }
+.domain-result.allowed { background: #e3f4e8; }
+.domain-result ul { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+.domain-result li { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: 4px 12px; padding-top: 8px; border-top: 1px solid #dce3da; }
+.domain-result li span { color: #597168; font-weight: 800; }
+.domain-result li code { overflow-wrap: anywhere; color: var(--ink); }
+.domain-result li small { grid-column: 2; color: #6b7b73; }
+.domain-actions { display: flex; align-items: center; gap: 14px; margin-top: 13px; }
+.domain-actions .primary-button { justify-self: auto; }
+.domain-actions a { color: var(--forest); font-size: 10px; font-weight: 800; }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 1fr; }
@@ -228,6 +245,9 @@ h1 em { color: var(--orange); font-weight: 400; }
   .choice-heading { align-items: start; }
   .time-pill { display: none; }
   .address-row, .provider-card { grid-template-columns: 1fr; }
+  .domain-doctor-row { grid-template-columns: 1fr; }
+  .domain-result li { grid-template-columns: 1fr; }
+  .domain-result li small { grid-column: 1; }
   .password-row, .apply-panel { grid-template-columns: 1fr; align-items: stretch; }
   .apply-actions { flex-wrap: wrap; }
   .access-links { grid-template-columns: 1fr; }

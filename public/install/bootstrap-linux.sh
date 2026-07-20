@@ -201,3 +201,10 @@ printf 'Compose: %s\n' "$(sudo docker compose version)"
 printf 'Pi-hole admin: %s\n' "$PIHOLE_ADMIN_URL"
 printf 'Admin password file: %s\n' "$PIHOLE_PASSWORD_FILE"
 printf 'This device is authenticated and running Pi-hole.\n'
+
+say "Installing the private appliance controller"
+CONTROLLER_INSTALLER="$TEMP_DIR/install-controller-linux.sh"
+curl --fail --location --silent --show-error \
+  https://raw.githubusercontent.com/AES256Afro/PieAES256Hole/main/public/install/install-controller-linux.sh \
+  --output "$CONTROLLER_INSTALLER"
+sudo bash "$CONTROLLER_INSTALLER"

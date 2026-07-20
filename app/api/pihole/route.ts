@@ -14,7 +14,19 @@ const allowedOperations = new Set([
   "POST /lists?type=block",
   "POST /lists:batchDelete",
   "POST /action/gravity",
+  "POST /domains/allow/exact",
 ]);
+
+const encodedDomain = "(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:%2e|\\.)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:(?:%2e|\\.)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*";
+const domainOperations = [
+  new RegExp(`^GET /search/${encodedDomain}\\?partial=false&N=20$`, "i"),
+  new RegExp(`^DELETE /domains/allow/exact/${encodedDomain}$`, "i"),
+];
+
+function isAllowedOperation(method: string, path: string) {
+  const operation = `${method} ${path}`;
+  return allowedOperations.has(operation) || domainOperations.some((pattern) => pattern.test(operation));
+}
 
 function isPrivateIPv4(hostname: string) {
   const parts = hostname.split(".").map(Number);
@@ -59,7 +71,7 @@ export async function POST(request: Request) {
   }
 
   const method = (payload.method || "GET").toUpperCase();
-  if (!allowedOperations.has(`${method} ${payload.path}`)) return jsonError("That Pi-hole operation is not allowed by the local proxy.", 403);
+  if (!isAllowedOperation(method, payload.path)) return jsonError("That Pi-hole operation is not allowed by the local proxy.", 403);
 
   const upstreamUrl = new URL(`/api${payload.path}`, baseUrl.origin);
   const headers = new Headers({ Accept: "application/json, text/plain" });

@@ -23,6 +23,20 @@ test("Linux bootstrap targets the appliance and starts services", async () => {
   assert.match(script, /systemctl enable --now tailscaled docker/);
   assert.match(script, /WEBPASSWORD_FILE: pihole_webpasswd/);
   assert.match(script, /pihole\/pihole:2026\.05\.0/);
+  assert.match(script, /install-controller-linux\.sh/);
+});
+
+test("Linux controller is private, persistent, and does not expose a LAN port", async () => {
+  const script = await readFile(new URL("install-controller-linux.sh", root), "utf8");
+  const dockerfile = await readFile(new URL("../../Dockerfile", root), "utf8");
+
+  assert.match(script, /tailscale status/);
+  assert.match(script, /127\.0\.0\.1:3000:3000/);
+  assert.match(script, /restart: unless-stopped/);
+  assert.match(script, /tailscale serve --bg --yes --https=443 http:\/\/127\.0\.0\.1:3000/);
+  assert.match(script, /controller-status\.json/);
+  assert.match(dockerfile, /node:22-bookworm-slim/);
+  assert.match(dockerfile, /pnpm run build/);
 });
 
 test("Windows bootstrap uses elevation, winget, and unattended Tailscale", async () => {
@@ -57,6 +71,9 @@ test("protection catalog uses reviewed HTTPS lists and safe rollback", async () 
   assert.match(route, /X-FTL-SID/);
   assert.match(page, /\/lists:batchDelete/);
   assert.match(page, /\/action\/gravity/);
+  assert.match(page, /\/search\/\$\{encodeURIComponent\(domain\)\}/);
+  assert.match(page, /\/domains\/allow\/exact/);
+  assert.match(page, /Undo exact allow/);
   assert.doesNotMatch(page, /setTimeout\(\(\) => \{\s*setTesting/);
 });
 
@@ -67,5 +84,7 @@ test("the Pi-hole proxy is restricted to private consoles and typed operations",
   assert.match(route, /allowedOperations/);
   assert.match(route, /GET \/auth/);
   assert.match(route, /POST \/lists:batchDelete/);
+  assert.match(route, /POST \/domains\/allow\/exact/);
+  assert.match(route, /DELETE \/domains\/allow\/exact/);
   assert.doesNotMatch(route, /Access-Control-Allow-Origin/);
 });

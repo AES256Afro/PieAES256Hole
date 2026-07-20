@@ -12,7 +12,7 @@ The browser console is the shared GUI. Small native setup assistants may later h
 ## Runtime components
 
 - **Pi-hole v6** provides DNS filtering and its supported administrative interfaces.
-- **Control service** will be a small Go service with an embedded production frontend.
+- **Controller** currently runs the production web app in a restartable, unprivileged container bound to localhost; a later small Go service will add typed host inspection.
 - **Privileged helper** exposes a narrow, auditable operation set for systemd, firewall, DNS, and routes.
 - **SQLite** stores setup state, audit events, catalog metadata, and aggregate statistics.
 - **Tailscale** is the default remote-access path and tailnet DNS transport.
@@ -27,7 +27,9 @@ The browser console verifies Pi-hole v6 through `/api/auth` and `/api/info/versi
 
 The console holds the short-lived Pi-hole session ID in memory, uses `/api/lists` for blocklist changes, and invokes `/api/action/gravity` after a change. It records which URLs it added and uses `/api/lists:batchDelete` for a scoped rollback; pre-existing lists are preserved. The administrator password passes through the private console process only during authentication, is cleared from browser state afterward, and is never persisted.
 
-The browser still cannot read the appliance filesystem or invoke privileged host commands. A future local control service will verify the signed bootstrap status and expose typed Docker, systemd, Tailscale, firewall, DNS, and reboot health endpoints. Browser reachability checks are clearly labeled and never substitute for host inspection.
+The Linux installer binds the controller to `127.0.0.1:3000`, applies `restart: unless-stopped`, and uses persistent Tailscale Serve HTTPS for tailnet-only access before login. The browser still cannot read the appliance filesystem or invoke privileged host commands. A future local control service will verify the signed bootstrap status and expose typed Docker, systemd, Tailscale, firewall, DNS, and reboot health endpoints. Browser reachability checks are clearly labeled and never substitute for host inspection.
+
+The “why blocked?” workflow uses Pi-hole's supported `/api/search/{domain}` operation, and any exception is an exact allow entry only. It never creates a wildcard or parent-domain exception. The same screen can delete only that exact allow entry to undo the change.
 
 The console must never synthesize a LAN hostname or admin URL. An appliance address begins empty, is supplied by discovery or the user, and must respond before it can appear in the handoff. Browser-only reachability is not sufficient to identify Pi-hole; authoritative product and version verification belongs to the local control service.
 

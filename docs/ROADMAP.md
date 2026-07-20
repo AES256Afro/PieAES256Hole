@@ -18,6 +18,8 @@
 - Add optional Apple and Microsoft native telemetry lists.
 - Validate manual list URLs, rebuild gravity, and roll back only newly added lists.
 - Check Reddit, Stremio, Steam, and Facebook reachability after changes.
+- Install the console on the Linux appliance with start-on-boot and private Tailscale HTTPS.
+- Explain list matches for one domain, add an exact allow, and undo it.
 
 ## M2 — Read-only appliance inspection
 
@@ -47,7 +49,7 @@
 - Signed blocklist catalog with license and provenance metadata.
 - Essential, Balanced, Strict, Family, and Security-only profiles.
 - Manual URL import, validation, overlap analysis, and health scoring.
-- Per-device groups, temporary allows, and “why blocked?” explanations.
+- Per-device groups, expiring temporary allows, and query-log correlation.
 
 ## M6 — Native WireGuard
 

@@ -2,7 +2,7 @@
 
 Pie AES256 Hole is a guided setup and management console for a small Linux appliance running Pi-hole, private remote access, curated blocklists, and optional VPN egress.
 
-The current milestone combines automated bootstrap scripts with a browser console that authenticates directly to Pi-hole v6, installs reviewed protection profiles through Pi-hole's supported API, rebuilds gravity, checks important services, and can remove only the lists it added.
+The current milestone combines automated bootstrap scripts with a private, appliance-hosted browser console that authenticates to Pi-hole v6, installs reviewed protection profiles through Pi-hole's supported API, rebuilds gravity, checks important services, and can remove only the changes it made.
 
 ## What works now
 
@@ -16,6 +16,8 @@ The current milestone combines automated bootstrap scripts with a browser consol
 - Reddit, Stremio, Steam, and Facebook reachability checks after a profile change.
 - Real prerequisite bootstrap scripts for macOS, Debian-family Linux appliances, and Windows.
 - Tailscale authentication placed before appliance discovery and configuration.
+- Linux controller container bound only to localhost, started before login, and published privately with persistent Tailscale Serve HTTPS.
+- “Why was this blocked?” inspection with exact-domain allow and one-click undo.
 - Keyboard-accessible native controls and reduced-motion support.
 - Server-rendered smoke test and production build.
 
@@ -45,12 +47,13 @@ The GUI provides platform-specific downloads and copyable commands for:
 - `public/install/bootstrap-macos.sh`
 - `public/install/bootstrap-linux.sh`
 - `public/install/bootstrap-windows.ps1`
+- `public/install/install-controller-linux.sh`
 
 The scripts detect existing requirements before installing anything. They use official Tailscale, Docker, and Pi-hole sources; request administrator approval only for system changes; require acceptance of Docker Desktop's separate terms; authenticate Tailscale before appliance setup; deploy persistent Pi-hole with a generated password and restart policy; and write a status JSON file for the future local control service.
 
 The production shelf appliance path uses Linux, Docker Engine, and Compose. macOS and Windows can run a local test appliance through Docker Desktop, but Docker Desktop startup still depends on the desktop operating system's login/startup behavior. A controller-only installation may skip Docker and Pi-hole with `--skip-docker` on macOS or `-SkipDocker` on Windows.
 
-The web console uses a same-origin proxy to call Pi-hole's supported HTTP API without weakening Pi-hole's CORS policy. The proxy accepts only a fixed set of typed Pi-hole operations, private LAN or Tailscale targets, and consoles hosted on localhost, private addresses, `.local`, or `.ts.net`. The public Sites deployment refuses management requests. The console still cannot inspect Docker, systemd, firewall state, or reboot persistence; those host-level checks remain the responsibility of the planned appliance controller.
+The Linux bootstrap also installs the controller as a restartable Docker service on `127.0.0.1:3000` and publishes it only inside the authenticated tailnet with Tailscale Serve. The web console uses a same-origin proxy to call Pi-hole's supported HTTP API without weakening Pi-hole's CORS policy. The proxy accepts only a fixed set of typed Pi-hole operations, private LAN or Tailscale targets, and consoles hosted on localhost, private addresses, `.local`, or `.ts.net`. The public Sites deployment refuses management requests.
 
 Validation:
 
